@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AirBlink - Turbo Rocket Edition</title>
+  <title>AirBlink - Smart Density Edition</title>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
   
   <style>
     :root {
       --bg-color: #000;
       --panel-bg: rgba(15, 23, 42, 0.95);
-      --accent-color: #ef4444; /* Turbo Red */
+      --accent-color: #3b82f6;
       --success-color: #10b981;
       --text-color: #f8fafc;
     }
@@ -42,7 +42,6 @@
     .tab-content { display: none; width: 100%; height: 100%; justify-content: center; align-items: center; }
     .tab-content.active { display: flex; }
 
-    /* QR 1X ตัวใหญ่ จุดใหญ่ อ่านง่ายสุดๆ */
     #qrcode {
       background: #fff; padding: 16px; border-radius: 16px;
       display: flex; justify-content: center; align-items: center;
@@ -51,14 +50,13 @@
       width: 75vw !important; height: 75vw !important;
       max-width: 75vh !important; max-height: 75vh !important;
       object-fit: contain;
-      image-rendering: pixelated; /* เร่งความคมชัดจุด */
     }
 
-    /* กล้องและ Canvas สำหรับสแกน Direct Frame */
-    #video { width: 100vw; height: 100vh; object-fit: cover; }
-    #canvas { display: none; }
+    #reader { width: 100% !important; height: 100% !important; border: none !important; }
+    #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+    #reader__dashboard { display: none !important; }
 
-    .header-title { font-size: 20px; font-weight: bold; margin-bottom: 12px; color: #ef4444; display:flex; align-items:center; gap:6px; }
+    .header-title { font-size: 20px; font-weight: bold; margin-bottom: 12px; color: #38bdf8; }
     .tab-switch { display: flex; background: #0f172a; padding: 4px; border-radius: 8px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.1); }
     .nav-btn { flex: 1; padding: 8px; border: none; background: transparent; color: #94a3b8; font-weight: bold; font-size: 12px; border-radius: 6px; cursor: pointer; }
     .nav-btn.active { background: var(--accent-color); color: #fff; }
@@ -68,9 +66,9 @@
     .btn { width: 100%; padding: 10px; background: var(--accent-color); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-top: 6px; }
     .btn-success { background: var(--success-color); }
     
-    .progress-bar-container { width: 100%; background: #0f172a; height: 10px; border-radius: 5px; overflow: hidden; margin: 10px 0; }
-    .progress-bar { width: 0%; height: 100%; background: var(--accent-color); transition: width 0.03s; }
-    .status { font-size: 12px; color: #f87171; font-weight: bold; margin-top: 6px; }
+    .progress-bar-container { width: 100%; background: #0f172a; height: 8px; border-radius: 4px; overflow: hidden; margin: 10px 0; }
+    .progress-bar { width: 0%; height: 100%; background: var(--success-color); transition: width 0.05s; }
+    .status { font-size: 12px; color: #38bdf8; font-weight: bold; margin-top: 6px; }
 
     @media (max-width: 768px) {
       body, html { flex-direction: column; }
@@ -84,14 +82,11 @@
 
   <div class="view-area">
     <div id="sender-tab" class="tab-content active"><div id="qrcode"></div></div>
-    <div id="receiver-tab" class="tab-content">
-      <video id="video" playsinline></video>
-      <canvas id="canvas"></canvas>
-    </div>
+    <div id="receiver-tab" class="tab-content"><div id="reader"></div></div>
   </div>
 
   <div class="sidebar">
-    <div class="header-title">🚀 Turbo Rocket</div>
+    <div class="header-title">⚡ Smart Density</div>
     
     <div class="tab-switch">
       <button class="nav-btn active" onclick="switchTab('sender')">📤 ฝั่งส่ง</button>
@@ -103,13 +98,13 @@
       <label>ข้อความ หรือ ไฟล์:</label>
       <textarea id="sendPayload" placeholder="พิมพ์ข้อความ..."></textarea>
       <input type="file" id="fileInput" style="margin-bottom: 8px; width: 100%; color: #fff; font-size: 11px;">
-      <button class="btn" onclick="startTurboTransmission()">🚀 ยิงข้อมูลติดจรวด (Ultra-Fast)</button>
+      <button class="btn" onclick="startSmartTransmission()">🚀 เริ่มส่งข้อมูล (Smart Density Logic)</button>
       <div class="status" id="sendStatus">พร้อมส่ง</div>
     </div>
 
     <!-- RECEIVER CONTROLS -->
     <div id="receiver-controls" style="display:none;">
-      <button class="btn btn-success" id="startCamBtn" onclick="startCamera()">📷 เปิดกล้องสแกนยิงจรวด</button>
+      <button class="btn btn-success" id="startCamBtn" onclick="startCamera()">📷 เปิดกล้องสแกน</button>
       <div class="progress-bar-container"><div id="progressBar" class="progress-bar"></div></div>
       <div class="status" id="recvStatus">รอกดเปิดกล้อง</div>
       
@@ -123,7 +118,6 @@
   <script>
     let qrSize = Math.min(window.innerWidth, window.innerHeight) * 0.65;
     const qrElement = document.getElementById("qrcode");
-    // ใช้ Correction Level L เพื่อให้จุดมีขนาดใหญ่ที่สุด สแกนไวที่สุด
     let qrCode = new QRCode(qrElement, { width: qrSize, height: qrSize, correctLevel: QRCode.CorrectLevel.L });
 
     function switchTab(mode) {
@@ -154,22 +148,20 @@
       reader.readAsDataURL(file);
     });
 
-    // ==================== 🚀 TURBO SENDER (MINIMAL MATRIX) ====================
-    function startTurboTransmission() {
+    // ==================== 🧠 SMART DENSITY LOGIC ====================
+    function startSmartTransmission() {
       const rawData = document.getElementById('sendPayload').value;
       if (!rawData) return alert("กรุณากรอกข้อความหรือเลือกไฟล์!");
 
       const compressed = LZString.compressToEncodedURIComponent(rawData);
       
-      // ⚡ เคล็ดลับความไว: หั่นชิ้นส่วนให้เล็กมาก (60 Chars) 
-      // เพื่อให้ QR Code ลายจุดน้อยที่สุด รูปร่างใหญ่ โฟกัสได้ติดจรวด
-      const chunkSize = 60; 
-      const speed = 18; // ⚡ 18ms ต่อเฟรม (~55 FPS) ไวสุดขีดทางกายภาพ
+      // 🧠 ตรรกะใหม่: เพิ่มขีดความสามารถต่อชิ้นเป็น 250 ตัวอักษร (ยัดข้อมูลได้เยอะขึ้น 4 เท่า)
+      const chunkSize = 250; 
+      const speed = 90; // จังหวะกำลังดี กล้องเก็บภาพได้ 100% ไม่หลุดเฟรม
 
       const chunks = [];
       const total = Math.ceil(compressed.length / chunkSize);
       for (let i = 0; i < total; i++) {
-        // แปะ Header สั้นสุดๆ [idx/total|data]
         chunks.push(`${i + 1}/${total}|${compressed.substr(i * chunkSize, chunkSize)}`);
       }
 
@@ -179,7 +171,7 @@
       sendTimer = setInterval(() => {
         qrCode.clear();
         qrCode.makeCode(chunks[idx]);
-        document.getElementById('sendStatus').innerText = `🚀 TURBO STREAMING: ${idx + 1} / ${total}`;
+        document.getElementById('sendStatus').innerText = `⚡ SMART STREAM: ชิ้นที่ ${idx + 1} / ${total}`;
         idx = (idx + 1) % total;
       }, speed);
     }
@@ -188,12 +180,8 @@
       if (sendTimer) clearInterval(sendTimer);
     }
 
-    // ==================== 🚀 TURBO RECEIVER (DIRECT CANVAS 60FPS) ====================
-    let video = document.getElementById("video");
-    let canvasElement = document.getElementById("canvas");
-    let canvas = canvasElement.getContext("2d");
-    let animationFrameId = null;
-    
+    // ==================== 📥 RECEIVER LOGIC ====================
+    let html5Qr = null;
     let receivedChunks = {};
     let totalChunks = 0;
     let isDone = false;
@@ -204,49 +192,29 @@
       document.getElementById('recvOutput').style.display = 'none';
       document.getElementById('downloadBtn').style.display = 'none';
 
-      // เปิดกล้องแบบ 60 FPS ไร้ UI กีดขวาง
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", frameRate: { ideal: 60 } } })
-        .then(function(stream) {
-          video.srcObject = stream;
-          video.setAttribute("playsinline", true);
-          video.play();
-          document.getElementById('startCamBtn').style.display = 'none';
-          document.getElementById('recvStatus').innerText = "⚡ สแกนติดจรวด 60 FPS...";
-          animationFrameId = requestAnimationFrame(scanFrameDirect);
-        })
-        .catch(err => alert("เปิดกล้องไม่ได้: " + err));
+      if (!html5Qr) html5Qr = new Html5Qrcode("reader");
+
+      html5Qr.start(
+        { facingMode: "environment" },
+        { fps: 30, qrbox: { width: Math.floor(window.innerWidth * 0.7), height: Math.floor(window.innerWidth * 0.7) } },
+        onScanSuccess
+      ).then(() => {
+        document.getElementById('startCamBtn').style.display = 'none';
+        document.getElementById('recvStatus').innerText = "📷 กำลังสแกน...";
+      }).catch(err => alert("เปิดกล้องไม่ได้: " + err));
     }
 
     function stopCamera() {
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      if (video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-        document.getElementById('startCamBtn').style.display = 'block';
-        document.getElementById('recvStatus').innerText = "ปิดกล้องแล้ว";
+      if (html5Qr && html5Qr.isScanning) {
+        html5Qr.stop().then(() => {
+          document.getElementById('startCamBtn').style.display = 'block';
+          document.getElementById('recvStatus').innerText = "ปิดกล้องแล้ว";
+        });
       }
     }
 
-    // ฟังก์ชันดึงภาพตรงจากกล้องลง Canvas ถอดรหัสทันทีทุกความเร็ว 60Hz
-    function scanFrameDirect() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA && !isDone) {
-        canvasElement.height = video.videoHeight;
-        canvasElement.width = video.videoWidth;
-        canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-        
-        const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
-        // ถอดรหัสด้วย jsQR Engine ที่ไวที่สุด
-        const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
-
-        if (code && code.data) {
-          onTurboChunkScanned(code.data);
-        }
-      }
-      if (!isDone) {
-        animationFrameId = requestAnimationFrame(scanFrameDirect);
-      }
-    }
-
-    function onTurboChunkScanned(text) {
+    function onScanSuccess(text) {
+      if (isDone) return;
       const match = text.match(/^(\d+)\/(\d+)\|(.*)$/s);
       if (match) {
         const curr = parseInt(match[1]);
@@ -258,11 +226,11 @@
           const pct = Math.round((count / totalChunks) * 100);
           
           document.getElementById('progressBar').style.width = pct + '%';
-          document.getElementById('recvStatus').innerText = `🚀 ได้รับแล้ว ${count} / ${totalChunks} ชิ้น (${pct}%)`;
+          document.getElementById('recvStatus').innerText = `ได้รับแล้ว ${count} / ${totalChunks} ชิ้น (${pct}%)`;
 
           if (count === totalChunks) {
             isDone = true;
-            document.getElementById('recvStatus').innerText = "✅ สำเร็จ 100%! กำลังประมวลผล...";
+            document.getElementById('recvStatus').innerText = "✅ สำเร็จ! กำลังประมวลผล...";
 
             let fullCompressed = "";
             for (let i = 1; i <= totalChunks; i++) fullCompressed += receivedChunks[i];
