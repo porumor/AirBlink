@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AirBlink - Fountain Codes Edition</title>
+  <title>AirBlink - Turbo Rocket Edition</title>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
   
   <style>
     :root {
       --bg-color: #000;
       --panel-bg: rgba(15, 23, 42, 0.95);
-      --accent-color: #3b82f6;
+      --accent-color: #ef4444; /* Turbo Red */
       --success-color: #10b981;
       --text-color: #f8fafc;
     }
@@ -42,6 +42,7 @@
     .tab-content { display: none; width: 100%; height: 100%; justify-content: center; align-items: center; }
     .tab-content.active { display: flex; }
 
+    /* QR 1X ตัวใหญ่ จุดใหญ่ อ่านง่ายสุดๆ */
     #qrcode {
       background: #fff; padding: 16px; border-radius: 16px;
       display: flex; justify-content: center; align-items: center;
@@ -50,13 +51,14 @@
       width: 75vw !important; height: 75vw !important;
       max-width: 75vh !important; max-height: 75vh !important;
       object-fit: contain;
+      image-rendering: pixelated; /* เร่งความคมชัดจุด */
     }
 
-    #reader { width: 100% !important; height: 100% !important; border: none !important; }
-    #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
-    #reader__dashboard { display: none !important; }
+    /* กล้องและ Canvas สำหรับสแกน Direct Frame */
+    #video { width: 100vw; height: 100vh; object-fit: cover; }
+    #canvas { display: none; }
 
-    .header-title { font-size: 20px; font-weight: bold; margin-bottom: 12px; color: #38bdf8; }
+    .header-title { font-size: 20px; font-weight: bold; margin-bottom: 12px; color: #ef4444; display:flex; align-items:center; gap:6px; }
     .tab-switch { display: flex; background: #0f172a; padding: 4px; border-radius: 8px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.1); }
     .nav-btn { flex: 1; padding: 8px; border: none; background: transparent; color: #94a3b8; font-weight: bold; font-size: 12px; border-radius: 6px; cursor: pointer; }
     .nav-btn.active { background: var(--accent-color); color: #fff; }
@@ -66,9 +68,9 @@
     .btn { width: 100%; padding: 10px; background: var(--accent-color); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-top: 6px; }
     .btn-success { background: var(--success-color); }
     
-    .progress-bar-container { width: 100%; background: #0f172a; height: 8px; border-radius: 4px; overflow: hidden; margin: 10px 0; }
-    .progress-bar { width: 0%; height: 100%; background: var(--success-color); transition: width 0.05s; }
-    .status { font-size: 12px; color: #38bdf8; font-weight: bold; margin-top: 6px; }
+    .progress-bar-container { width: 100%; background: #0f172a; height: 10px; border-radius: 5px; overflow: hidden; margin: 10px 0; }
+    .progress-bar { width: 0%; height: 100%; background: var(--accent-color); transition: width 0.03s; }
+    .status { font-size: 12px; color: #f87171; font-weight: bold; margin-top: 6px; }
 
     @media (max-width: 768px) {
       body, html { flex-direction: column; }
@@ -82,11 +84,14 @@
 
   <div class="view-area">
     <div id="sender-tab" class="tab-content active"><div id="qrcode"></div></div>
-    <div id="receiver-tab" class="tab-content"><div id="reader"></div></div>
+    <div id="receiver-tab" class="tab-content">
+      <video id="video" playsinline></video>
+      <canvas id="canvas"></canvas>
+    </div>
   </div>
 
   <div class="sidebar">
-    <div class="header-title">⚡ AirBlink Fountain</div>
+    <div class="header-title">🚀 Turbo Rocket</div>
     
     <div class="tab-switch">
       <button class="nav-btn active" onclick="switchTab('sender')">📤 ฝั่งส่ง</button>
@@ -98,13 +103,13 @@
       <label>ข้อความ หรือ ไฟล์:</label>
       <textarea id="sendPayload" placeholder="พิมพ์ข้อความ..."></textarea>
       <input type="file" id="fileInput" style="margin-bottom: 8px; width: 100%; color: #fff; font-size: 11px;">
-      <button class="btn" onclick="startFountainTransmission()">🚀 พ่นข้อมูล Fountain Codes (1-Way)</button>
+      <button class="btn" onclick="startTurboTransmission()">🚀 ยิงข้อมูลติดจรวด (Ultra-Fast)</button>
       <div class="status" id="sendStatus">พร้อมส่ง</div>
     </div>
 
     <!-- RECEIVER CONTROLS -->
     <div id="receiver-controls" style="display:none;">
-      <button class="btn btn-success" id="startCamBtn" onclick="startCamera()">📷 เปิดกล้องสแกนรับละออง</button>
+      <button class="btn btn-success" id="startCamBtn" onclick="startCamera()">📷 เปิดกล้องสแกนยิงจรวด</button>
       <div class="progress-bar-container"><div id="progressBar" class="progress-bar"></div></div>
       <div class="status" id="recvStatus">รอกดเปิดกล้อง</div>
       
@@ -118,6 +123,7 @@
   <script>
     let qrSize = Math.min(window.innerWidth, window.innerHeight) * 0.65;
     const qrElement = document.getElementById("qrcode");
+    // ใช้ Correction Level L เพื่อให้จุดมีขนาดใหญ่ที่สุด สแกนไวที่สุด
     let qrCode = new QRCode(qrElement, { width: qrSize, height: qrSize, correctLevel: QRCode.CorrectLevel.L });
 
     function switchTab(mode) {
@@ -148,177 +154,135 @@
       reader.readAsDataURL(file);
     });
 
-    // ==================== 𝜟 FOUNTAIN MATH LOGIC ====================
-    // ฟังก์ชัน XOR ข้อความสองก้อนเข้าด้วยกัน
-    function xorStrings(a, b) {
-      let result = "";
-      const len = Math.max(a.length, b.length);
-      for (let i = 0; i < len; i++) {
-        const codeA = a.charCodeAt(i) || 0;
-        const codeB = b.charCodeAt(i) || 0;
-        result += String.fromCharCode(codeA ^ codeB);
-      }
-      return result;
-    }
-
-    function startFountainTransmission() {
+    // ==================== 🚀 TURBO SENDER (MINIMAL MATRIX) ====================
+    function startTurboTransmission() {
       const rawData = document.getElementById('sendPayload').value;
       if (!rawData) return alert("กรุณากรอกข้อความหรือเลือกไฟล์!");
 
       const compressed = LZString.compressToEncodedURIComponent(rawData);
-      const chunkSize = 350; 
-      const K = Math.ceil(compressed.length / chunkSize); // จำนวนชิ้นฐาน
       
-      const baseChunks = [];
-      for (let i = 0; i < K; i++) {
-        baseChunks.push(compressed.substr(i * chunkSize, chunkSize));
+      // ⚡ เคล็ดลับความไว: หั่นชิ้นส่วนให้เล็กมาก (60 Chars) 
+      // เพื่อให้ QR Code ลายจุดน้อยที่สุด รูปร่างใหญ่ โฟกัสได้ติดจรวด
+      const chunkSize = 60; 
+      const speed = 18; // ⚡ 18ms ต่อเฟรม (~55 FPS) ไวสุดขีดทางกายภาพ
+
+      const chunks = [];
+      const total = Math.ceil(compressed.length / chunkSize);
+      for (let i = 0; i < total; i++) {
+        // แปะ Header สั้นสุดๆ [idx/total|data]
+        chunks.push(`${i + 1}/${total}|${compressed.substr(i * chunkSize, chunkSize)}`);
       }
 
       stopTransmission();
-      let seedCounter = 1;
+      let idx = 0;
 
-      // ⛲ พ่นละอองข้อมูล (Droplets) ออกไปเรื่อยๆ แบบไม่มีวันจบ ไม่ต้องมีชิ้นสุดท้าย
       sendTimer = setInterval(() => {
-        // ใช้ Seed สร้างสุ่มการผสมแบบ Pseudo-Random
-        const degree = (seedCounter % 2 === 0 && K > 1) ? 2 : 1; // สลับผสม 1 ชิ้น และ 2 ชิ้น
-        let indices = [];
-        let mixData = "";
-
-        if (degree === 1) {
-          const idx = (seedCounter - 1) % K;
-          indices = [idx];
-          mixData = baseChunks[idx];
-        } else {
-          const idx1 = (seedCounter - 1) % K;
-          const idx2 = seedCounter % K;
-          indices = [idx1, idx2];
-          mixData = xorStrings(baseChunks[idx1], baseChunks[idx2]);
-        }
-
-        // โครงสร้าง Droplet: [K|Indices_CSV|Data_Base64]
-        const payload = `${K}|${indices.join(",")}|${btoa(encodeURIComponent(mixData))}`;
-
         qrCode.clear();
-        qrCode.makeCode(payload);
-        document.getElementById('sendStatus').innerText = `⛲ พ่นละอองข้อมูล Droplet #${seedCounter} (K=${K})`;
-        seedCounter++;
-      }, 30);
+        qrCode.makeCode(chunks[idx]);
+        document.getElementById('sendStatus').innerText = `🚀 TURBO STREAMING: ${idx + 1} / ${total}`;
+        idx = (idx + 1) % total;
+      }, speed);
     }
 
     function stopTransmission() {
       if (sendTimer) clearInterval(sendTimer);
     }
 
-    // ==================== 📥 FOUNTAIN DECODER LOGIC ====================
-    let html5Qr = null;
-    let receivedDroplets = [];
-    let requiredK = 0;
+    // ==================== 🚀 TURBO RECEIVER (DIRECT CANVAS 60FPS) ====================
+    let video = document.getElementById("video");
+    let canvasElement = document.getElementById("canvas");
+    let canvas = canvasElement.getContext("2d");
+    let animationFrameId = null;
+    
+    let receivedChunks = {};
+    let totalChunks = 0;
     let isDone = false;
 
     function startCamera() {
-      receivedDroplets = []; requiredK = 0; isDone = false;
+      receivedChunks = {}; totalChunks = 0; isDone = false;
       document.getElementById('progressBar').style.width = '0%';
       document.getElementById('recvOutput').style.display = 'none';
       document.getElementById('downloadBtn').style.display = 'none';
 
-      if (!html5Qr) html5Qr = new Html5Qrcode("reader");
-
-      html5Qr.start(
-        { facingMode: "environment" },
-        { fps: 60, qrbox: { width: Math.floor(window.innerWidth * 0.7), height: Math.floor(window.innerWidth * 0.7) } },
-        onScanSuccess
-      ).then(() => {
-        document.getElementById('startCamBtn').style.display = 'none';
-        document.getElementById('recvStatus').innerText = "📷 กำลังสแกนดักจับละอองข้อมูล...";
-      }).catch(err => alert("เปิดกล้องไม่ได้: " + err));
+      // เปิดกล้องแบบ 60 FPS ไร้ UI กีดขวาง
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", frameRate: { ideal: 60 } } })
+        .then(function(stream) {
+          video.srcObject = stream;
+          video.setAttribute("playsinline", true);
+          video.play();
+          document.getElementById('startCamBtn').style.display = 'none';
+          document.getElementById('recvStatus').innerText = "⚡ สแกนติดจรวด 60 FPS...";
+          animationFrameId = requestAnimationFrame(scanFrameDirect);
+        })
+        .catch(err => alert("เปิดกล้องไม่ได้: " + err));
     }
 
     function stopCamera() {
-      if (html5Qr && html5Qr.isScanning) {
-        html5Qr.stop().then(() => {
-          document.getElementById('startCamBtn').style.display = 'block';
-          document.getElementById('recvStatus').innerText = "ปิดกล้องแล้ว";
-        });
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        document.getElementById('startCamBtn').style.display = 'block';
+        document.getElementById('recvStatus').innerText = "ปิดกล้องแล้ว";
       }
     }
 
-    function onScanSuccess(text) {
-      if (isDone) return;
-      const parts = text.split("|");
-      if (parts.length === 3) {
-        const K = parseInt(parts[0]);
-        const indices = parts[1].split(",").map(Number);
-        const data = decodeURIComponent(atob(parts[2]));
+    // ฟังก์ชันดึงภาพตรงจากกล้องลง Canvas ถอดรหัสทันทีทุกความเร็ว 60Hz
+    function scanFrameDirect() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA && !isDone) {
+        canvasElement.height = video.videoHeight;
+        canvasElement.width = video.videoWidth;
+        canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+        
+        const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+        // ถอดรหัสด้วย jsQR Engine ที่ไวที่สุด
+        const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
 
-        requiredK = K;
+        if (code && code.data) {
+          onTurboChunkScanned(code.data);
+        }
+      }
+      if (!isDone) {
+        animationFrameId = requestAnimationFrame(scanFrameDirect);
+      }
+    }
 
-        // บันทึกเฉพาะ Droplet ที่ไม่ซ้ำทางสมการ
-        const dropletKey = indices.sort().join(",");
-        if (!receivedDroplets.some(d => d.key === dropletKey)) {
-          receivedDroplets.push({ indices, data, key: dropletKey });
-
-          // คำนวณความคืบหน้าตามจำนวนละอองที่สะสมได้เทียบกับ K
-          const pct = Math.min(100, Math.round((receivedDroplets.length / requiredK) * 100));
+    function onTurboChunkScanned(text) {
+      const match = text.match(/^(\d+)\/(\d+)\|(.*)$/s);
+      if (match) {
+        const curr = parseInt(match[1]);
+        totalChunks = parseInt(match[2]);
+        
+        if (!receivedChunks[curr]) {
+          receivedChunks[curr] = match[3];
+          const count = Object.keys(receivedChunks).length;
+          const pct = Math.round((count / totalChunks) * 100);
+          
           document.getElementById('progressBar').style.width = pct + '%';
-          document.getElementById('recvStatus').innerText = `สะสมละอองได้แล้ว ${receivedDroplets.length} / ${requiredK} ก้อน (${pct}%)`;
+          document.getElementById('recvStatus').innerText = `🚀 ได้รับแล้ว ${count} / ${totalChunks} ชิ้น (${pct}%)`;
 
-          // เมื่อสะสมละอองได้ครบ K ก้อน แก้สมการถอดรหัสทันที!
-          if (receivedDroplets.length >= requiredK) {
-            solveAndComplete();
-          }
-        }
-      }
-    }
+          if (count === totalChunks) {
+            isDone = true;
+            document.getElementById('recvStatus').innerText = "✅ สำเร็จ 100%! กำลังประมวลผล...";
 
-    // ถอดรหัสระบบสมการ XOR (Gaussian Elimination Simplification)
-    function solveAndComplete() {
-      isDone = true;
-      document.getElementById('recvStatus').innerText = "𝜟 สำเร็จ! กำลังแก้สมการถอดรหัสข้อมูล...";
+            let fullCompressed = "";
+            for (let i = 1; i <= totalChunks; i++) fullCompressed += receivedChunks[i];
+            
+            const fullData = LZString.decompressFromEncodedURIComponent(fullCompressed);
 
-      const solved = {};
-      let changed = true;
+            document.getElementById('recvStatus').innerText = "✅ สำเร็จ! ได้รับข้อมูลสมบูรณ์";
+            const output = document.getElementById('recvOutput');
+            output.value = fullData;
+            output.style.display = 'block';
 
-      // แก้สมการวนลูปจนได้ชิ้นส่วนฐานครบ 0..K-1
-      while (changed) {
-        changed = false;
-        for (let droplet of receivedDroplets) {
-          // ตัดชิ้นที่แก้รหัสได้แล้วออกจากสมการ
-          droplet.indices = droplet.indices.filter(idx => {
-            if (solved[idx] !== undefined) {
-              droplet.data = xorStrings(droplet.data, solved[idx]);
-              return false;
+            if (fullData && fullData.startsWith("data:")) {
+              const dl = document.getElementById('downloadBtn');
+              dl.href = fullData;
+              dl.style.display = 'block';
             }
-            return true;
-          });
-
-          // ถ้าเหลือชิ้นเดียวในสมการ ถอดรหัสชิ้นนั้นได้ทันที!
-          if (droplet.indices.length === 1) {
-            const idx = droplet.indices[0];
-            solved[idx] = droplet.data;
-            changed = true;
+            stopCamera();
           }
         }
       }
-
-      // ประกอบชิ้นส่วนคืนกลับเป็นไฟล์เต็ม
-      let fullCompressed = "";
-      for (let i = 0; i < requiredK; i++) {
-        fullCompressed += (solved[i] || "");
-      }
-
-      const fullData = LZString.decompressFromEncodedURIComponent(fullCompressed);
-
-      document.getElementById('recvStatus').innerText = "✅ สำเร็จ! ถอดรหัสสมบูรณ์ 100%";
-      const output = document.getElementById('recvOutput');
-      output.value = fullData;
-      output.style.display = 'block';
-
-      if (fullData && fullData.startsWith("data:")) {
-        const dl = document.getElementById('downloadBtn');
-        dl.href = fullData;
-        dl.style.display = 'block';
-      }
-      stopCamera();
     }
   </script>
 </body>
