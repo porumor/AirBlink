@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AirBlink - 1X Ultra-Fast Speed</title>
+  <title>AirBlink - Smooth Smart Sync</title>
   
-  <!-- Libraries: QRCode, HTML5-QRCode, และ LZ-String (สำหรับบีบอัดข้อมูล 2X) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
@@ -16,6 +15,7 @@
       --panel-bg: rgba(15, 23, 42, 0.95);
       --accent-color: #3b82f6;
       --success-color: #10b981;
+      --warning-color: #f59e0b;
       --text-color: #f8fafc;
     }
 
@@ -24,68 +24,39 @@
       margin: 0; padding: 0; width: 100%; height: 100%;
       background: var(--bg-color); color: var(--text-color);
       font-family: system-ui, -apple-system, sans-serif;
-      overflow: hidden;
-      display: flex;
+      overflow: hidden; display: flex;
     }
 
-    /* แบ่งฝั่ง: จอแสดงผลเต็มอยู่ซ้าย, ปุ่มควบคุมอยู่ข้างๆ */
     .view-area {
-      flex: 1;
-      height: 100vh;
-      position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #000;
-      overflow: hidden;
+      flex: 1; height: 100vh; position: relative;
+      display: flex; justify-content: center; align-items: center;
+      background: #000; overflow: hidden;
     }
 
     .sidebar {
-      width: 320px;
-      height: 100vh;
-      background: var(--panel-bg);
+      width: 320px; height: 100vh; background: var(--panel-bg);
       border-left: 1px solid rgba(255, 255, 255, 0.1);
-      display: flex;
-      flex-direction: column;
-      padding: 16px;
-      z-index: 100;
-      overflow-y: auto;
+      display: flex; flex-direction: column; padding: 16px;
+      z-index: 100; overflow-y: auto;
     }
 
     .tab-content { display: none; width: 100%; height: 100%; justify-content: center; align-items: center; }
     .tab-content.active { display: flex; }
 
-    /* ฝั่งส่ง: QR 1X ใหญ่เต็มตา */
     #qrcode {
-      background: #fff;
-      padding: 16px;
-      border-radius: 16px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      background: #fff; padding: 16px; border-radius: 16px;
+      display: flex; justify-content: center; align-items: center;
     }
     #qrcode img {
-      width: 75vw !important;
-      height: 75vw !important;
-      max-width: 75vh !important;
-      max-height: 75vh !important;
+      width: 75vw !important; height: 75vw !important;
+      max-width: 75vh !important; max-height: 75vh !important;
       object-fit: contain;
     }
 
-    /* ฝั่งรับ: กล้องเต็มจอ */
-    #reader {
-      width: 100% !important;
-      height: 100% !important;
-      border: none !important;
-    }
-    #reader video {
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: cover !important;
-    }
+    #reader { width: 100% !important; height: 100% !important; border: none !important; }
+    #reader video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
     #reader__dashboard { display: none !important; }
 
-    /* Sidebar Components */
     .header-title { font-size: 20px; font-weight: bold; margin-bottom: 12px; color: #38bdf8; }
     .tab-switch { display: flex; background: #0f172a; padding: 4px; border-radius: 8px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.1); }
     .nav-btn { flex: 1; padding: 8px; border: none; background: transparent; color: #94a3b8; font-weight: bold; font-size: 12px; border-radius: 6px; cursor: pointer; }
@@ -99,6 +70,13 @@
     .progress-bar-container { width: 100%; background: #0f172a; height: 8px; border-radius: 4px; overflow: hidden; margin: 10px 0; }
     .progress-bar { width: 0%; height: 100%; background: var(--success-color); transition: width 0.05s; }
     .status { font-size: 12px; color: #38bdf8; font-weight: bold; margin-top: 6px; }
+    
+    /* กล่องแสดงชิ้นส่วนที่ยังขาด */
+    .missing-box {
+      margin-top: 8px; font-size: 11px; color: var(--warning-color);
+      background: rgba(245, 158, 11, 0.1); padding: 6px; border-radius: 4px;
+      word-break: break-all; display: none;
+    }
 
     @media (max-width: 768px) {
       body, html { flex-direction: column; }
@@ -110,39 +88,34 @@
 </head>
 <body>
 
-  <!-- จอหลักฝั่งซ้าย/บน (ไม่โดนปุ่มบัง) -->
   <div class="view-area">
-    <div id="sender-tab" class="tab-content active">
-      <div id="qrcode"></div>
-    </div>
-    <div id="receiver-tab" class="tab-content">
-      <div id="reader"></div>
-    </div>
+    <div id="sender-tab" class="tab-content active"><div id="qrcode"></div></div>
+    <div id="receiver-tab" class="tab-content"><div id="reader"></div></div>
   </div>
 
-  <!-- แผงควบคุมฝั่งขวา/ล่าง -->
   <div class="sidebar">
-    <div class="header-title">⚡ AirBlink 2X Speed</div>
+    <div class="header-title">⚡ AirBlink Smart Sync</div>
     
     <div class="tab-switch">
-      <button class="nav-btn active" onclick="switchTab('sender')">📤 ฝั่งส่ง (1X QR)</button>
+      <button class="nav-btn active" onclick="switchTab('sender')">📤 ฝั่งส่ง</button>
       <button class="nav-btn" onclick="switchTab('receiver')">📥 ฝั่งรับ</button>
     </div>
 
-    <!-- SENDER -->
+    <!-- SENDER CONTROLS -->
     <div id="sender-controls">
       <label>ข้อความ หรือ ไฟล์:</label>
       <textarea id="sendPayload" placeholder="พิมพ์ข้อความ..."></textarea>
       <input type="file" id="fileInput" style="margin-bottom: 8px; width: 100%; color: #fff; font-size: 11px;">
-      <button class="btn" onclick="startUltraTransmission()">🚀 บีบอัดข้อมูล + ส่งความเร็วสูง</button>
+      <button class="btn" onclick="startSmartTransmission()">🚀 เริ่มส่งแบบสุ่มความไวสูง (Smart Shuffle)</button>
       <div class="status" id="sendStatus">พร้อมส่ง</div>
     </div>
 
-    <!-- RECEIVER -->
+    <!-- RECEIVER CONTROLS -->
     <div id="receiver-controls" style="display:none;">
       <button class="btn btn-success" id="startCamBtn" onclick="startCamera()">📷 เปิดกล้องสแกน</button>
       <div class="progress-bar-container"><div id="progressBar" class="progress-bar"></div></div>
       <div class="status" id="recvStatus">รอกดเปิดกล้อง</div>
+      <div class="missing-box" id="missingBox">กำลังรอชิ้นส่วน...</div>
       
       <textarea id="recvOutput" readonly placeholder="ผลลัพธ์..." style="display:none; color:#34d399; margin-top: 6px; height: 70px;"></textarea>
       <a id="downloadBtn" style="display:none; text-decoration:none; margin-top: 6px;" download="airblink_file">
@@ -184,30 +157,46 @@
       reader.readAsDataURL(file);
     });
 
-    function startUltraTransmission() {
+    // ⚡ ฟังก์ชันสับไพ่สุ่มลำดับ (Fisher-Yates Shuffle)
+    function shuffleArray(array) {
+      let arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function startSmartTransmission() {
       const rawData = document.getElementById('sendPayload').value;
       if (!rawData) return alert("กรุณากรอกข้อความหรือเลือกไฟล์!");
 
-      // ⚡ ระบบเสริม: ใช้ LZ-String บีบอัดข้อมูลลง 50%+ เพื่อลดขนาดลงครึ่งหนึ่ง
       const compressedData = LZString.compressToEncodedURIComponent(rawData);
+      const chunkSize = 450; 
+      const speed = 30;     
 
-      const chunkSize = 500; // ขนาดกำลังสแกนได้ไวมาก
-      const speed = 30;     // กระพริบ 30ms (เร่งสุดขีด)
-
-      const chunks = [];
+      const originalChunks = [];
       const total = Math.ceil(compressedData.length / chunkSize);
       for (let i = 0; i < total; i++) {
-        chunks.push(`${i + 1}/${total}|${compressedData.substr(i * chunkSize, chunkSize)}`);
+        originalChunks.push(`${i + 1}/${total}|${compressedData.substr(i * chunkSize, chunkSize)}`);
       }
 
       stopTransmission();
-      let idx = 0;
       
+      // ลูปแบบสุ่มกระจายชิ้นส่วน ลดปัญหารอชิ้นท้ายๆ นาน
+      let playQueue = shuffleArray(originalChunks);
+      let idx = 0;
+
       sendTimer = setInterval(() => {
+        if (idx >= playQueue.length) {
+          playQueue = shuffleArray(originalChunks); // หมดรอบแล้วสุ่มลำดับใหม่ทันที
+          idx = 0;
+        }
+
         qrCode.clear();
-        qrCode.makeCode(chunks[idx]);
-        document.getElementById('sendStatus').innerText = `⚡ กำลังส่ง (บีบอัด 2X): ชิ้นที่ ${idx + 1}/${total}`;
-        idx = (idx + 1) % total;
+        qrCode.makeCode(playQueue[idx]);
+        document.getElementById('sendStatus').innerText = `⚡ กำลังส่ง (Smart Shuffle): รวม ${total} ชิ้น`;
+        idx++;
       }, speed);
     }
 
@@ -225,6 +214,7 @@
       document.getElementById('progressBar').style.width = '0%';
       document.getElementById('recvOutput').style.display = 'none';
       document.getElementById('downloadBtn').style.display = 'none';
+      document.getElementById('missingBox').style.display = 'none';
 
       if (!html5Qr) html5Qr = new Html5Qrcode("reader");
 
@@ -261,12 +251,24 @@
           
           document.getElementById('progressBar').style.width = pct + '%';
           document.getElementById('recvStatus').innerText = `ได้รับแล้ว ${count} / ${totalChunks} ชิ้น (${pct}%)`;
+
+          // 🔍 แสดงรายการชิ้นส่วนที่ยังหลุดอยู่ ให้ดูง่ายขึ้น
+          const missing = [];
+          for (let i = 1; i <= totalChunks; i++) {
+            if (!receivedChunks[i]) missing.push(i);
+          }
           
+          if (missing.length > 0 && missing.length <= 10) {
+            const missingBox = document.getElementById('missingBox');
+            missingBox.style.display = 'block';
+            missingBox.innerText = `⏳ ขาดชิ้นส่วนหมายเลข: ${missing.join(', ')}`;
+          }
+
           if (count === totalChunks) {
             isDone = true;
-            document.getElementById('recvStatus').innerText = "⚡ สำเร็จ! กำลัง คลายบีบอัดข้อมูล...";
+            document.getElementById('missingBox').style.display = 'none';
+            document.getElementById('recvStatus').innerText = "⚡ สำเร็จ! กำลังคลายบีบอัด...";
             
-            // นำชิ้นส่วนมารวมและคลายบีบอัด (Decompress)
             let fullCompressed = "";
             for (let i = 1; i <= totalChunks; i++) fullCompressed += receivedChunks[i];
             
