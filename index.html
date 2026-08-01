@@ -3,222 +3,114 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AirBlink - Quad-QR with Auto Focus</title>
+  <title>AirBlink - High Performance Optical Transfer</title>
   
+  <!-- โหลด Library qrcode.js และ html5-qrcode -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   
   <style>
     :root {
       --bg-color: #000;
-      --panel-bg: rgba(15, 23, 42, 0.95);
+      --card-bg: rgba(15, 23, 42, 0.95);
       --accent-color: #3b82f6;
       --success-color: #10b981;
+      --text-color: #f8fafc;
     }
 
     * { box-sizing: border-box; }
     body, html {
-      margin: 0; padding: 0; width: 100vw; height: 100vh;
-      background: var(--bg-color); color: #fff;
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      background: var(--bg-color); color: var(--text-color);
       font-family: system-ui, -apple-system, sans-serif;
       overflow: hidden;
     }
 
-    /* แถบเมนูด้านบน */
     .header-nav {
       position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-      z-index: 1000; display: flex; background: rgba(30, 41, 59, 0.85);
+      z-index: 100; display: flex; background: rgba(30, 41, 59, 0.8);
       padding: 4px; border-radius: 30px; backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
     .nav-btn {
-      padding: 8px 18px; border: none; background: transparent;
+      padding: 8px 16px; border: none; background: transparent;
       color: #94a3b8; font-weight: bold; font-size: 13px; border-radius: 20px; cursor: pointer;
-      white-space: nowrap; transition: 0.2s;
     }
     .nav-btn.active { background: var(--accent-color); color: #fff; }
 
     .tab-content { display: none; width: 100vw; height: 100vh; position: relative; }
-    .tab-content.active { display: flex; align-items: center; justify-content: center; }
+    .tab-content.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-    /* ==================== 📤 SENDER: GRID 4 QR ==================== */
-    .qr-grid-container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: 1fr 1fr;
-      gap: 12px;
-      padding: 12px;
-      width: min(85vw, 85vh);
-      height: min(85vw, 85vh);
-      background: #000;
-    }
-
-    .qr-box {
-      background: #fff;
-      border-radius: 12px;
-      padding: 6px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
-    }
-    
-    .qr-box img {
-      width: 100% !important;
-      height: 100% !important;
+    /* ฝั่งส่ง: QR เต็มจอ */
+    #qrcode { background: #fff; padding: 12px; border-radius: 12px; display: flex; justify-content: center; align-items: center; }
+    #qrcode img {
+      width: 75vw !important; height: 75vw !important;
+      max-width: 75vh !important; max-height: 75vh !important;
       object-fit: contain;
     }
 
-    /* ==================== 📥 RECEIVER ==================== */
-    #reader {
-      position: absolute; top: 0; left: 0;
-      width: 100vw !important; height: 100vh !important;
-      border: none !important; z-index: 1;
-    }
-    #reader video {
-      width: 100vw !important; height: 100vh !important;
-      object-fit: cover !important;
-    }
+    /* ฝั่งรับ: กล้องเต็มจอ */
+    #reader { width: 100vw !important; height: 100vh !important; border: none !important; }
+    #reader video { width: 100vw !important; height: 100vh !important; object-fit: cover !important; }
 
-    /* วงกลมแจ้งเตือนเมื่อแตะหน้าจอเพื่อโฟกัส */
-    .focus-ring {
-      position: absolute;
-      width: 65px; height: 65px;
-      border: 2px solid #38bdf8;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 999;
-      transform: translate(-50%, -50%) scale(1.4);
-      opacity: 0;
-      transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    .control-panel {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      width: 92%; max-width: 420px; background: var(--card-bg);
+      padding: 14px; border-radius: 16px; backdrop-filter: blur(10px);
+      z-index: 90; border: 1px solid rgba(255, 255, 255, 0.1);
     }
-    .focus-ring.active {
-      transform: translate(-50%, -50%) scale(1);
-      opacity: 1;
-    }
-
-    /* ปุ่มและ Sidebar */
-    .toggle-side-btn {
-      position: absolute; right: 12px; top: 12px; z-index: 1001;
-      background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(255,255,255,0.2);
-      color: #fff; padding: 8px 14px; border-radius: 20px; font-size: 12px;
-      cursor: pointer; font-weight: bold; backdrop-filter: blur(8px);
-    }
-
-    .side-panel {
-      position: absolute; right: 12px; top: 60px; bottom: 20px;
-      width: 290px; max-width: calc(100vw - 24px);
-      background: var(--panel-bg); padding: 16px; border-radius: 16px; z-index: 100;
-      border: 1px solid rgba(255, 255, 255, 0.15); display: flex; flex-direction: column; gap: 10px;
-      backdrop-filter: blur(12px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: -5px 0 25px rgba(0,0,0,0.5);
-    }
-    .side-panel.collapsed { transform: translateX(calc(100% + 20px)); }
-
     textarea {
-      width: 100%; flex: 1; min-height: 80px; background: #0f172a;
-      border: 1px solid #334155; color: #fff; padding: 10px;
-      border-radius: 8px; font-size: 12px; resize: none; font-family: inherit;
+      width: 100%; height: 50px; background: #0f172a; border: 1px solid #334155;
+      color: #fff; padding: 8px; border-radius: 8px; margin-bottom: 6px; font-size: 12px;
     }
     .btn {
-      width: 100%; padding: 12px; background: var(--accent-color); color: white;
+      width: 100%; padding: 10px; background: var(--accent-color); color: white;
       border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px;
-      transition: opacity 0.2s;
     }
-    .btn-success { background: var(--success-color); }
-    .progress-bar-container { width: 100%; background: rgba(255,255,255,0.2); height: 8px; border-radius: 4px; overflow: hidden; margin: 6px 0; }
+    .progress-bar-container { width: 100%; background: #0f172a; height: 8px; border-radius: 4px; overflow: hidden; margin: 6px 0; }
     .progress-bar { width: 0%; height: 100%; background: var(--success-color); transition: width 0.05s; }
-    .status-text { font-size: 12px; color: #38bdf8; font-weight: bold; text-align: center; }
-
-    /* PREVIEW MODAL */
-    .modal-overlay {
-      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); z-index: 2000;
-      align-items: center; justify-content: center; padding: 20px;
-    }
-    .modal-overlay.active { display: flex; }
-    .modal-card {
-      background: #1e293b; border-radius: 20px; padding: 24px; width: 100%; max-width: 450px;
-      border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-      display: flex; flex-direction: column; gap: 14px; text-align: center;
-    }
-    .modal-card h2 { margin: 0; color: var(--success-color); font-size: 20px; }
-
+    .status { text-align: center; font-size: 12px; color: #38bdf8; font-weight: bold; }
     #reader__dashboard { display: none !important; }
   </style>
 </head>
 <body>
 
   <div class="header-nav">
-    <button class="nav-btn active" onclick="switchTab('sender')">📤 ฝั่งส่ง (Quad 4x)</button>
-    <button class="nav-btn" onclick="switchTab('receiver')">📥 ฝั่งรับ (Multi-Scan)</button>
+    <button class="nav-btn active" onclick="switchTab('sender')">📤 ฝั่งส่ง (High-Density)</button>
+    <button class="nav-btn" onclick="switchTab('receiver')">📥 ฝั่งรับ (Any-Order)</button>
   </div>
 
-  <button class="toggle-side-btn" id="toggleBtn" onclick="toggleSidePanel()">⚙️ เมนูตั้งค่า</button>
-
-  <!-- วงกลมเอฟเฟกต์เวลาแตะจอเพื่อรีโฟกัส -->
-  <div class="focus-ring" id="focusRing"></div>
-
-  <!-- ==================== SENDER TAB (4 QR GRID) ==================== -->
+  <!-- SENDER TAB -->
   <div id="sender-tab" class="tab-content active">
-    <div class="qr-grid-container">
-      <div class="qr-box"><div id="qrcode1"></div></div>
-      <div class="qr-box"><div id="qrcode2"></div></div>
-      <div class="qr-box"><div id="qrcode3"></div></div>
-      <div class="qr-box"><div id="qrcode4"></div></div>
-    </div>
-
-    <div class="side-panel" id="senderSidePanel">
-      <span style="font-size: 13px; font-weight: bold; color: #94a3b8;">🚀 ส่งข้อมูลความเร็ว 4 เท่า:</span>
-      <textarea id="sendPayload" placeholder="พิมพ์ข้อความ หรือเลือกไฟล์..."></textarea>
-      <input type="file" id="fileInput" style="width: 100%; color: #fff; font-size: 12px;">
-      <button class="btn" onclick="startQuadTransmission()">⚡ เริ่มส่งข้อมูล 4 ช่อง</button>
-      <div class="status-text" id="sendStatus" style="margin-top: 4px;">พร้อมส่ง</div>
+    <div id="qrcode"></div>
+    <div class="control-panel">
+      <textarea id="sendPayload" placeholder="พิมพ์ข้อความ หรือเลือกไฟล์ขนาดเล็ก..."></textarea>
+      <input type="file" id="fileInput" style="margin-bottom: 6px; width: 100%; color: #fff; font-size: 11px;">
+      <button class="btn" onclick="startHighSpeedTransmission()">🚀 เริ่มส่งข้อมูลความหนาแน่นสูง</button>
+      <div class="status" id="sendStatus" style="margin-top: 4px;">พร้อมส่ง</div>
     </div>
   </div>
 
-  <!-- ==================== RECEIVER TAB ==================== -->
-  <div id="receiver-tab" class="tab-content" onclick="triggerManualFocus(event)">
+  <!-- RECEIVER TAB -->
+  <div id="receiver-tab" class="tab-content">
     <div id="reader"></div>
-
-    <div class="side-panel" id="receiverSidePanel">
-      <span style="font-size: 13px; font-weight: bold; color: #94a3b8;">📷 สถานะการสแกน 4x:</span>
+    <div class="control-panel">
       <div class="progress-bar-container"><div id="progressBar" class="progress-bar"></div></div>
-      <div class="status-text" id="recvStatus">รอกดเปิดกล้อง</div>
-      <button class="btn" id="startCamBtn" onclick="startCamera()" style="margin-top: 8px;">📷 เปิดกล้องสแกน</button>
-      <button class="btn" onclick="refocusCamera()" style="margin-top: 4px; background: #475569; font-size: 11px;">🎯 รีเซ็ตโฟกัสกล้อง</button>
-    </div>
-  </div>
-
-  <!-- POPUP PREVIEW MODAL -->
-  <div class="modal-overlay" id="previewModal">
-    <div class="modal-card">
-      <h2>🎉 ได้รับข้อมูลครบ 100%!</h2>
-      <span style="font-size: 12px; color: #94a3b8;">พรีวิวข้อมูลที่สแกนสำเร็จ:</span>
-      <textarea id="modalOutput" readonly style="height: 150px; color: #34d399;"></textarea>
-      <a id="modalDownloadBtn" style="display:none; text-decoration:none;" download="airblink_received_file">
-        <button class="btn btn-success">💾 ดาวน์โหลดไฟล์ที่ได้รับ</button>
+      <div class="status" id="recvStatus">กดเปิดกล้องเพื่อรับข้อมูล (สแกนแบบไม่เรียงลำดับ)</div>
+      
+      <textarea id="recvOutput" readonly placeholder="ผลลัพธ์..." style="display:none; color:#34d399; margin-top: 6px;"></textarea>
+      <a id="downloadBtn" style="display:none; text-decoration:none; margin-top: 6px;" download="airblink_file">
+        <button class="btn" style="background: var(--success-color);">💾 ดาวน์โหลดไฟล์</button>
       </a>
-      <button class="btn" onclick="closeModal()" style="background: #475569;">❌ ปิดหน้าต่าง</button>
+
+      <button class="btn" id="startCamBtn" onclick="startCamera()" style="margin-top: 6px;">📷 เปิดกล้องสแกน</button>
     </div>
   </div>
 
   <script>
-    let qrObjects = [];
-    function initQuadQRs() {
-      const gridBox = document.querySelector('.qr-box');
-      const boxSize = Math.floor(gridBox.clientWidth * 0.9);
-      qrObjects = [];
-      for (let i = 1; i <= 4; i++) {
-        const el = document.getElementById(`qrcode${i}`);
-        el.innerHTML = "";
-        qrObjects.push(new QRCode(el, { width: boxSize, height: boxSize, correctLevel: QRCode.CorrectLevel.L }));
-      }
-    }
-
-    window.addEventListener('load', initQuadQRs);
-    window.addEventListener('resize', initQuadQRs);
+    let qrSize = Math.min(window.innerWidth, window.innerHeight) * 0.7;
+    const qrElement = document.getElementById("qrcode");
+    let qrCode = new QRCode(qrElement, { width: qrSize, height: qrSize, correctLevel: QRCode.CorrectLevel.L });
 
     function switchTab(mode) {
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -234,16 +126,6 @@
       }
     }
 
-    function toggleSidePanel() {
-      const activeTab = document.querySelector('.tab-content.active').id;
-      if (activeTab === 'sender-tab') {
-        document.getElementById('senderSidePanel').classList.toggle('collapsed');
-      } else {
-        document.getElementById('receiverSidePanel').classList.toggle('collapsed');
-      }
-    }
-
-    // SENDER LOGIC
     let sendTimer = null;
     document.getElementById('fileInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -253,12 +135,12 @@
       reader.readAsDataURL(file);
     });
 
-    function startQuadTransmission() {
+    function startHighSpeedTransmission() {
       const data = document.getElementById('sendPayload').value;
-      if (!data) return alert("กรุณากรอกข้อมูลหรือเลือกไฟล์!");
+      if (!data) return alert("กรุณากรอกข้อความหรือเลือกไฟล์!");
 
-      const chunkSize = 500; 
-      const speed = 40; 
+      const chunkSize = 800; 
+      const speed = 35;     
 
       const chunks = [];
       const total = Math.ceil(data.length / chunkSize);
@@ -268,16 +150,11 @@
 
       stopTransmission();
       let idx = 0;
-      document.getElementById('senderSidePanel').classList.add('collapsed');
-
       sendTimer = setInterval(() => {
-        for (let q = 0; q < 4; q++) {
-          const currentChunkIdx = (idx + q) % total;
-          qrObjects[q].clear();
-          qrObjects[q].makeCode(chunks[currentChunkIdx]);
-        }
-        document.getElementById('sendStatus').innerText = `⚡ ความเร็ว 4x: ชิ้นที่ ${idx + 1} - ${Math.min(idx + 4, total)} / ${total}`;
-        idx = (idx + 4) % total;
+        qrCode.clear();
+        qrCode.makeCode(chunks[idx]);
+        document.getElementById('sendStatus').innerText = `กำลังส่งชิ้นที่ [${idx + 1}/${total}]`;
+        idx = (idx + 1) % total;
       }, speed);
     }
 
@@ -285,9 +162,7 @@
       if (sendTimer) clearInterval(sendTimer);
     }
 
-    // RECEIVER (WITH AUTO FOCUS & TAP TO FOCUS)
     let html5Qr = null;
-    let videoTrack = null;
     let chunks = {};
     let totalChunks = 0;
     let isDone = false;
@@ -295,64 +170,32 @@
     function startCamera() {
       chunks = {}; totalChunks = 0; isDone = false;
       document.getElementById('progressBar').style.width = '0%';
-      document.getElementById('receiverSidePanel').classList.add('collapsed');
+      document.getElementById('recvOutput').style.display = 'none';
+      document.getElementById('downloadBtn').style.display = 'none';
 
       if (!html5Qr) html5Qr = new Html5Qrcode("reader");
 
-      // 🎯 บังคับเปิดระบบ Auto Continuous Focus สั่งให้เลนส์จับโฟกัสตลอดเวลา
-      const cameraConfig = {
-        facingMode: "environment",
-        advanced: [
-          { focusMode: "continuous" }, 
-          { focusDistance: 0.2 } // บังคับระยะโฟกัสใกล้ (Macro/Close-up)
-        ]
-      };
+      const qrboxSize = Math.floor(window.innerWidth * 0.85);
 
+      // ✅ แก้ไขโครงสร้างเรียกกล้องให้ถูกต้องตามกฎของ html5-qrcode
       html5Qr.start(
-        cameraConfig,
-        { fps: 60, qrbox: { width: Math.floor(window.innerWidth * 0.9), height: Math.floor(window.innerWidth * 0.9) } },
+        { facingMode: "environment" },
+        { 
+          fps: 60, 
+          qrbox: { width: qrboxSize, height: qrboxSize } 
+        },
         onScanSuccess
       ).then(() => {
         document.getElementById('startCamBtn').style.display = 'none';
-        document.getElementById('recvStatus').innerText = "📷 ออโต้โฟกัสสแกนเต็มจอ...";
-
-        // ดึงฮาร์ดแวร์ Video Track ของกล้องมาไว้สั่งบังคับโฟกัสเพิ่ม
-        const videoElement = document.querySelector("#reader video");
-        if (videoElement && videoElement.srcObject) {
-          videoTrack = videoElement.srcObject.getVideoTracks()[0];
-          refocusCamera();
-        }
+        document.getElementById('recvStatus').innerText = "📷 กำลังสแกนความเร็วสูง...";
       }).catch(err => alert("เปิดกล้องไม่ได้: " + err));
-    }
-
-    // ฟังก์ชันสั่งเลนส์กล้องขยับโฟกัสใหม่ซ้ำ
-    function refocusCamera() {
-      if (videoTrack && videoTrack.applyConstraints) {
-        videoTrack.applyConstraints({
-          advanced: [{ focusMode: "continuous" }]
-        }).catch(e => console.log("Focus constraint error:", e));
-      }
-    }
-
-    // 🎯 ระบบ Tap to Focus (กดตรงไหนบนจอ สั่งให้กล้องโฟกัสตรงนั้นทันที)
-    function triggerManualFocus(e) {
-      if (!html5Qr || !html5Qr.isScanning) return;
-      
-      // แสดงวงกลมโฟกัสตรงจุดที่นิ้วแตะ
-      const ring = document.getElementById('focusRing');
-      ring.style.left = `${e.clientX}px`;
-      ring.style.top = `${e.clientY}px`;
-      ring.classList.add('active');
-      setTimeout(() => ring.classList.remove('active'), 400);
-
-      refocusCamera(); // กระตุ้นคำสั่งโฟกัส
     }
 
     function stopCamera() {
       if (html5Qr && html5Qr.isScanning) {
         html5Qr.stop().then(() => {
           document.getElementById('startCamBtn').style.display = 'block';
-          document.getElementById('recvStatus').innerText = "รอกดเปิดกล้อง";
+          document.getElementById('recvStatus').innerText = "ปิดกล้องแล้ว";
         });
       }
     }
@@ -370,33 +213,27 @@
           const pct = Math.round((count / totalChunks) * 100);
           
           document.getElementById('progressBar').style.width = pct + '%';
-          document.getElementById('recvStatus').innerText = `สแกนได้: ${count}/${totalChunks} (${pct}%)`;
+          document.getElementById('recvStatus').innerText = `ได้รับแล้ว ${count} / ${totalChunks} ชิ้น (${pct}%)`;
           
           if (count === totalChunks) {
             isDone = true;
-            stopCamera();
-
+            document.getElementById('recvStatus').innerText = "✅ สำเร็จ! ประกอบข้อมูลครบถ้วน";
             let fullData = "";
             for (let i = 1; i <= totalChunks; i++) fullData += chunks[i];
+            
+            const output = document.getElementById('recvOutput');
+            output.value = fullData;
+            output.style.display = 'block';
 
-            document.getElementById('modalOutput').value = fullData;
-            const dlBtn = document.getElementById('modalDownloadBtn');
             if (fullData.startsWith("data:")) {
-              dlBtn.href = fullData;
-              dlBtn.style.display = 'block';
-            } else {
-              dlBtn.style.display = 'none';
+              const dl = document.getElementById('downloadBtn');
+              dl.href = fullData;
+              dl.style.display = 'block';
             }
-
-            document.getElementById('previewModal').classList.add('active');
+            stopCamera();
           }
         }
       }
-    }
-
-    function closeModal() {
-      document.getElementById('previewModal').classList.remove('active');
-      document.getElementById('receiverSidePanel').classList.remove('collapsed');
     }
   </script>
 </body>
