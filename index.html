@@ -3,112 +3,140 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AirBlink - High Performance Optical Transfer</title>
+  <title>AirBlink - Clean UI Edition</title>
   
-  <!-- ใช้ qrcodejs รุ่นมาตรฐาน -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   
   <style>
     :root {
       --bg-color: #000;
-      --card-bg: rgba(15, 23, 42, 0.95);
       --accent-color: #3b82f6;
       --success-color: #10b981;
-      --text-color: #f8fafc;
     }
 
     * { box-sizing: border-box; }
     body, html {
-      margin: 0; padding: 0; width: 100%; height: 100%;
-      background: var(--bg-color); color: var(--text-color);
+      margin: 0; padding: 0; width: 100vw; height: 100vh;
+      background: var(--bg-color); color: #fff;
       font-family: system-ui, -apple-system, sans-serif;
       overflow: hidden;
     }
 
+    /* แถบสลับโหมดลอยเล็กๆ บนสุด */
     .header-nav {
-      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-      z-index: 100; display: flex; background: rgba(30, 41, 59, 0.8);
-      padding: 4px; border-radius: 30px; backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; display: flex; background: rgba(15, 23, 42, 0.7);
+      padding: 3px; border-radius: 30px; backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
     }
     .nav-btn {
-      padding: 8px 16px; border: none; background: transparent;
-      color: #94a3b8; font-weight: bold; font-size: 13px; border-radius: 20px; cursor: pointer;
+      padding: 6px 14px; border: none; background: transparent;
+      color: #94a3b8; font-weight: bold; font-size: 12px; border-radius: 20px; cursor: pointer;
     }
     .nav-btn.active { background: var(--accent-color); color: #fff; }
 
     .tab-content { display: none; width: 100vw; height: 100vh; position: relative; }
-    .tab-content.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .tab-content.active { display: flex; align-items: center; justify-content: center; }
 
-    /* ฝั่งส่ง: QR เต็มจอ */
-    #qrcode { background: #fff; padding: 12px; border-radius: 12px; display: flex; justify-content: center; align-items: center; }
+    /* ==================== 📤 ฝั่งส่ง: QR คลีนๆ เต็มตา ==================== */
+    #qrcode {
+      background: #fff; padding: 10px; border-radius: 12px;
+      display: flex; justify-content: center; align-items: center;
+      z-index: 1;
+    }
     #qrcode img {
-      width: 75vw !important; height: 75vw !important;
-      max-width: 75vh !important; max-height: 75vh !important;
+      width: 85vw !important; height: 85vw !important;
+      max-width: 85vh !important; max-height: 85vh !important;
       object-fit: contain;
     }
 
-    /* ฝั่งรับ: กล้องเต็มจอ */
-    #reader { width: 100vw !important; height: 100vh !important; border: none !important; }
-    #reader video { width: 100vw !important; height: 100vh !important; object-fit: cover !important; }
-
-    .control-panel {
+    /* แผงตั้งค่าฝั่งส่ง (ซ่อนตัวเองเมื่อกดเริ่มส่ง) */
+    .sender-panel {
       position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-      width: 92%; max-width: 420px; background: var(--card-bg);
-      padding: 14px; border-radius: 16px; backdrop-filter: blur(10px);
-      z-index: 90; border: 1px solid rgba(255, 255, 255, 0.1);
+      width: 90%; max-width: 380px; background: rgba(15, 23, 42, 0.95);
+      padding: 12px; border-radius: 14px; z-index: 10;
+      border: 1px solid rgba(255, 255, 255, 0.2); transition: all 0.3s ease;
     }
+    .sender-panel.hidden { opacity: 0; pointer-events: none; } /* ซ่อนมิดชิด */
+
+    /* ==================== 📥 ฝั่งรับ: กล้องเต็มจอ 100% ==================== */
+    #reader {
+      position: absolute; top: 0; left: 0;
+      width: 100vw !important; height: 100vh !important;
+      border: none !important; z-index: 1;
+    }
+    #reader video {
+      width: 100vw !important; height: 100vh !important;
+      object-fit: cover !important;
+    }
+
+    /* แถบแจ้งสถานะจิ๋ว ลอยล่างสุดไม่บังภาพ */
+    .bottom-bar {
+      position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+      width: 85%; max-width: 360px; z-index: 10;
+      background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px);
+      padding: 8px 12px; border-radius: 20px; text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
     textarea {
       width: 100%; height: 50px; background: #0f172a; border: 1px solid #334155;
-      color: #fff; padding: 8px; border-radius: 8px; margin-bottom: 6px; font-size: 12px;
+      color: #fff; padding: 6px; border-radius: 6px; margin-bottom: 6px; font-size: 11px;
     }
     .btn {
-      width: 100%; padding: 10px; background: var(--accent-color); color: white;
-      border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px;
+      width: 100%; padding: 8px; background: var(--accent-color); color: white;
+      border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;
     }
-    .progress-bar-container { width: 100%; background: #0f172a; height: 8px; border-radius: 4px; overflow: hidden; margin: 6px 0; }
+    .progress-bar-container { width: 100%; background: rgba(255,255,255,0.2); height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
     .progress-bar { width: 0%; height: 100%; background: var(--success-color); transition: width 0.05s; }
-    .status { text-align: center; font-size: 12px; color: #38bdf8; font-weight: bold; }
+    .status-text { font-size: 11px; color: #38bdf8; font-weight: bold; }
+
     #reader__dashboard { display: none !important; }
   </style>
 </head>
 <body>
 
+  <!-- แถบสลับโหมดลอยด้านบน -->
   <div class="header-nav">
-    <button class="nav-btn active" onclick="switchTab('sender')">📤 ฝั่งส่ง (High-Density)</button>
-    <button class="nav-btn" onclick="switchTab('receiver')">📥 ฝั่งรับ (Any-Order)</button>
+    <button class="nav-btn active" onclick="switchTab('sender')">📤 ฝั่งส่ง</button>
+    <button class="nav-btn" onclick="switchTab('receiver')">📥 ฝั่งรับ</button>
   </div>
 
-  <!-- SENDER TAB -->
+  <!-- ==================== SENDER TAB ==================== -->
   <div id="sender-tab" class="tab-content active">
-    <div id="qrcode"></div>
-    <div class="control-panel">
-      <textarea id="sendPayload" placeholder="พิมพ์ข้อความ หรือเลือกไฟล์ขนาดเล็ก..."></textarea>
+    <!-- QR Code เพียวๆ กลางจอ -->
+    <div id="qrcode" onclick="toggleSenderPanel()"></div>
+
+    <!-- แผงใส่ข้อมูล (กดที่ QR เพื่อซ่อน/เรียกคืนได้) -->
+    <div class="sender-panel" id="senderPanel">
+      <textarea id="sendPayload" placeholder="พิมพ์ข้อความ หรือเลือกไฟล์..."></textarea>
       <input type="file" id="fileInput" style="margin-bottom: 6px; width: 100%; color: #fff; font-size: 11px;">
-      <button class="btn" onclick="startHighSpeedTransmission()">🚀 เริ่มส่งข้อมูลความหนาแน่นสูง</button>
-      <div class="status" id="sendStatus" style="margin-top: 4px;">พร้อมส่ง</div>
+      <button class="btn" onclick="startTransmission()">🚀 เริ่มส่ง (จะซ่อนเมนูอัตโนมัติ)</button>
     </div>
   </div>
 
-  <!-- RECEIVER TAB -->
+  <!-- ==================== RECEIVER TAB ==================== -->
   <div id="receiver-tab" class="tab-content">
+    <!-- จอภาพกล้อง 100% ไม่มีไรบัง -->
     <div id="reader"></div>
-    <div class="control-panel">
+
+    <!-- แถบสถานะมินิมอลด้านล่างสุด -->
+    <div class="bottom-bar">
       <div class="progress-bar-container"><div id="progressBar" class="progress-bar"></div></div>
-      <div class="status" id="recvStatus">กดเปิดกล้องเพื่อรับข้อมูล (สแกนแบบไม่เรียงลำดับ)</div>
+      <div class="status-text" id="recvStatus">กดปุ่มเพื่อเปิดกล้อง</div>
+      
+      <button class="btn" id="startCamBtn" onclick="startCamera()" style="margin-top: 4px;">📷 เปิดกล้องสแกน</button>
       
       <textarea id="recvOutput" readonly placeholder="ผลลัพธ์..." style="display:none; color:#34d399; margin-top: 6px;"></textarea>
-      <a id="downloadBtn" style="display:none; text-decoration:none; margin-top: 6px;" download="airblink_file">
+      <a id="downloadBtn" style="display:none; text-decoration:none; margin-top: 4px;" download="airblink_file">
         <button class="btn" style="background: var(--success-color);">💾 ดาวน์โหลดไฟล์</button>
       </a>
-
-      <button class="btn" id="startCamBtn" onclick="startCamera()" style="margin-top: 6px;">📷 เปิดกล้องสแกน</button>
     </div>
   </div>
 
   <script>
-    let qrSize = Math.min(window.innerWidth, window.innerHeight) * 0.7;
+    let qrSize = Math.min(window.innerWidth, window.innerHeight) * 0.85;
     const qrElement = document.getElementById("qrcode");
     let qrCode = new QRCode(qrElement, { width: qrSize, height: qrSize, correctLevel: QRCode.CorrectLevel.L });
 
@@ -126,6 +154,11 @@
       }
     }
 
+    function toggleSenderPanel() {
+      document.getElementById('senderPanel').classList.toggle('hidden');
+    }
+
+    // SENDER LOGIC
     let sendTimer = null;
     document.getElementById('fileInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -135,11 +168,10 @@
       reader.readAsDataURL(file);
     });
 
-    function startHighSpeedTransmission() {
+    function startTransmission() {
       const data = document.getElementById('sendPayload').value;
-      if (!data) return alert("กรุณากรอกข้อความหรือเลือกไฟล์!");
+      if (!data) return alert("กรุณากรอกข้อมูลหรือเลือกไฟล์!");
 
-      // ⚡ เพิ่มความหนาแน่นต่อ QR เป็น 800 Bytes (ข้อมูลเยอะขึ้นต่อเฟรม) และเร่งสปีด 35ms
       const chunkSize = 800; 
       const speed = 35;     
 
@@ -151,19 +183,23 @@
 
       stopTransmission();
       let idx = 0;
+      
+      // ซ่อนแผงควบคุมฝั่งส่งเพื่อเคลียร์จอให้ QR ใหญ่เพียวๆ
+      document.getElementById('senderPanel').classList.add('hidden');
+
       sendTimer = setInterval(() => {
         qrCode.clear();
         qrCode.makeCode(chunks[idx]);
-        document.getElementById('sendStatus').innerText = `กำลังส่งชิ้นที่ [${idx + 1}/${total}]`;
-        // สลับสุ่มลำดับเล็กน้อยจำลองแนวคิด Fountain Code
         idx = (idx + 1) % total;
       }, speed);
     }
 
     function stopTransmission() {
       if (sendTimer) clearInterval(sendTimer);
+      document.getElementById('senderPanel').classList.remove('hidden');
     }
 
+    // RECEIVER LOGIC
     let html5Qr = null;
     let chunks = {};
     let totalChunks = 0;
@@ -179,11 +215,11 @@
 
       html5Qr.start(
         { facingMode: "environment" },
-        { fps: 60, qrbox: { width: Math.floor(window.innerWidth * 0.85), height: Math.floor(window.innerWidth * 0.85) } },
+        { fps: 60, qrbox: { width: Math.floor(window.innerWidth * 0.9), height: Math.floor(window.innerWidth * 0.9) } },
         onScanSuccess
       ).then(() => {
         document.getElementById('startCamBtn').style.display = 'none';
-        document.getElementById('recvStatus').innerText = "📷 กำลังสแกนความเร็วสูง...";
+        document.getElementById('recvStatus').innerText = "📷 สแกนเต็มจอ...";
       }).catch(err => alert("เปิดกล้องไม่ได้: " + err));
     }
 
@@ -191,7 +227,7 @@
       if (html5Qr && html5Qr.isScanning) {
         html5Qr.stop().then(() => {
           document.getElementById('startCamBtn').style.display = 'block';
-          document.getElementById('recvStatus').innerText = "ปิดกล้องแล้ว";
+          document.getElementById('recvStatus').innerText = "กดเพื่อเปิดกล้อง";
         });
       }
     }
@@ -203,18 +239,17 @@
         const curr = parseInt(match[1]);
         totalChunks = parseInt(match[2]);
         
-        // รับชิ้นส่วนแบบไม่เรียงลำดับ (Any-order collection)
         if (!chunks[curr]) {
           chunks[curr] = match[3];
           const count = Object.keys(chunks).length;
           const pct = Math.round((count / totalChunks) * 100);
           
           document.getElementById('progressBar').style.width = pct + '%';
-          document.getElementById('recvStatus').innerText = `ได้รับแล้ว ${count} / ${totalChunks} ชิ้น (${pct}%)`;
+          document.getElementById('recvStatus').innerText = `สแกนได้ ${count} / ${totalChunks} (${pct}%)`;
           
           if (count === totalChunks) {
             isDone = true;
-            document.getElementById('recvStatus').innerText = "✅ สำเร็จ! ประกอบข้อมูลครบถ้วน";
+            document.getElementById('recvStatus').innerText = "✅ สำเร็จ!";
             let fullData = "";
             for (let i = 1; i <= totalChunks; i++) fullData += chunks[i];
             
