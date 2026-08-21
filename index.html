@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบถอดความเสียง</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; }
+    audio::-webkit-media-controls-panel { background-color: #171717; }
+    audio::-webkit-media-controls-current-time-display,
+    audio::-webkit-media-controls-time-remaining-display { color: #ffffff; }
+  </style>
+</head>
+<body class="bg-black text-white min-h-screen flex flex-col justify-start py-12 px-4 sm:px-6 lg:px-8 selection:bg-white selection:text-black">
+
+  <div class="max-w-3xl w-full mx-auto space-y-8">
+    
+    <!-- ส่วนหัวทางการ -->
+    <header class="border-b border-neutral-800 pb-5">
+      <h1 class="text-xl font-semibold tracking-tight text-white uppercase">ระบบถอดความเสียง</h1>
+      <p class="text-xs text-neutral-400 mt-1">แปลงไฟล์เสียงยาวเป็นข้อความตามต้นฉบับ (ประหยัด RAM ไม่ทำให้มือถือค้าง)</p>
+    </header>
+
+    <!-- ส่วนตั้งค่าความปลอดภัยและอัปโหลดไฟล์ -->
+    <section class="space-y-4">
+      
+      <!-- ช่องกรอก API Key -->
+      <div class="border border-neutral-800 bg-neutral-950 p-4 space-y-2">
+        <div class="flex justify-between items-center">
+          <label for="apiKeyInput" class="text-xs text-neutral-400 uppercase tracking-wider font-medium">Google Gemini API Key</label>
+          <button type="button" id="toggleKeyBtn" class="text-[11px] text-neutral-500 hover:text-neutral-300">แสดงรหัส</button>
+        </div>
+        <input 
+          type="password" 
+          id="apiKeyInput" 
+          placeholder="วาง API Key ที่นี่ (ระบบจะบันทึกเฉพาะในอุปกรณ์นี้)" 
+          class="w-full px-3 py-2 bg-black border border-neutral-800 text-neutral-200 text-xs font-mono placeholder-neutral-700 focus:border-neutral-500 focus:outline-none"
+        >
+      </div>
+
+      <!-- กล่องเลือกไฟล์ -->
+      <div 
+        id="dropZone"
+        class="border border-neutral-800 hover:border-neutral-500 bg-neutral-950 p-8 text-center cursor-pointer transition rounded-none"
+      >
+        <input type="file" id="fileInput" accept="audio/*,.m4a,.mp3,.wav,.aac,.ogg,.mp4,.flac" class="hidden">
+        <p class="text-sm font-medium text-neutral-200">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</p>
+        <p class="text-xs text-neutral-500 mt-1">รองรับไฟล์เสียงความยาวหลายชั่วโมง ไม่จำกัดขนาดไฟล์</p>
+      </div>
+
+      <!-- ส่วนตรวจสอบข้อมูลและรีวิวเสียง -->
+      <div id="previewContainer" class="hidden border border-neutral-800 bg-neutral-950 p-4 space-y-3">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center text-xs text-neutral-400 border-b border-neutral-900 pb-2 gap-1">
+          <span id="fileName" class="truncate max-w-md text-neutral-200 font-medium"></span>
+          <span id="fileMeta" class="font-mono text-neutral-400"></span>
+        </div>
+        <div>
+          <label class="block text-[11px] text-neutral-500 uppercase tracking-wider mb-1.5">รีวิวเสียง</label>
+          <audio id="audioPlayer" controls class="w-full h-8 bg-neutral-900 rounded-none"></audio>
+        </div>
+      </div>
+
+      <!-- ปุ่มเริ่มประมวลผล -->
+      <button 
+        id="startBtn" 
+        disabled 
+        class="w-full py-3 bg-white text-black text-xs font-semibold uppercase tracking-wider hover:bg-neutral-200 disabled:bg-neutral-900 disabled:text-neutral-600 disabled:cursor-not-allowed transition"
+      >
+        เริ่มการถอดความ
+      </button>
+
+      <!-- ส่วนแสดงสถานะและเปอร์เซ็นต์ความคืบหน้า -->
+      <div id="progressSection" class="hidden border border-neutral-800 bg-neutral-950 p-4 space-y-2">
+        <div class="flex justify-between items-center text-xs">
+          <span id="statusText" class="text-neutral-400">กำลังเตรียมข้อมูล...</span>
+          <span id="percentText" class="font-mono text-white font-semibold">0%</span>
+        </div>
+        <div class="w-full h-1 bg-neutral-900 overflow-hidden">
+          <div id="progressBar" class="h-full bg-white transition-all duration-150" style="width: 0%;"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ส่วนสรุปและส่งออกข้อมูลทั้งหมด -->
+    <section id="globalActionSection" class="hidden border-b border-neutral-800 pb-4 flex justify-between items-center text-xs">
+      <div>
+        <span class="text-neutral-300 font-medium uppercase tracking-wider text-[11px]">รายการข้อความที่ถอดได้</span>
+        <span id="globalStats" class="text-neutral-500 ml-2 font-mono"></span>
+      </div>
+      <div class="flex gap-2">
+        <button id="copyAllBtn" class="px-3 py-1.5 border border-neutral-800 hover:border-neutral-600 text-neutral-300 text-xs transition">คัดลอกทั้งหมด</button>
+        <button id="downloadAllBtn" class="px-3 py-1.5 bg-white text-black font-semibold text-xs hover:bg-neutral-200 transition">ดาวน์โหลด TXT ทั้งหมด</button>
+      </div>
+    </section>
+
+    <!-- คอนเทนเนอร์แสดงกล่องข้อความ -->
+    <section id="chunksContainer" class="space-y-6"></section>
+
+  </div>
+
+  <script>
+    const MODEL = "gemini-3.6-flash";
+
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const toggleKeyBtn = document.getElementById('toggleKeyBtn');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('previewContainer');
+    const fileName = document.getElementById('fileName');
+    const fileMeta = document.getElementById('fileMeta');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const startBtn = document.getElementById('startBtn');
+    const progressSection = document.getElementById('progressSection');
+    const statusText = document.getElementById('statusText');
+    const percentText = document.getElementById('percentText');
+    const progressBar = document.getElementById('progressBar');
+    const globalActionSection = document.getElementById('globalActionSection');
+    const globalStats = document.getElementById('globalStats');
+    const copyAllBtn = document.getElementById('copyAllBtn');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const chunksContainer = document.getElementById('chunksContainer');
+
+    let currentFile = null;
+
+    const savedApiKey = localStorage.getItem('custom_gemini_api_key');
+    if (savedApiKey) apiKeyInput.value = savedApiKey;
+
+    apiKeyInput.addEventListener('input', () => {
+      localStorage.setItem('custom_gemini_api_key', apiKeyInput.value.trim());
+      validateReady();
+    });
+
+    toggleKeyBtn.addEventListener('click', () => {
+      const isPwd = apiKeyInput.type === 'password';
+      apiKeyInput.type = isPwd ? 'text' : 'password';
+      toggleKeyBtn.textContent = isPwd ? 'ซ่อนรหัส' : 'แสดงรหัส';
+    });
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-neutral-500'); });
+    dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('border-neutral-500'); });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-neutral-500');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function validateReady() {
+      const hasKey = apiKeyInput.value.trim().length > 0;
+      const hasFile = currentFile !== null;
+      startBtn.disabled = !(hasKey && hasFile);
+    }
+
+    function handleFile(file) {
+      currentFile = file;
+      fileName.textContent = file.name;
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      fileMeta.textContent = `ขนาด ${sizeMB} MB`;
+      audioPlayer.src = URL.createObjectURL(file);
+      previewContainer.classList.remove('hidden');
+      validateReady();
+    }
+
+    function setProgress(percent, text) {
+      const p = Math.min(100, Math.max(0, Math.round(percent)));
+      percentText.textContent = `${p}%`;
+      progressBar.style.width = `${p}%`;
+      if (text) statusText.textContent = text;
+    }
+
+    function downloadTxtFile(filename, text) {
+      if (!text) return;
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 300);
+    }
+
+    function createChunkUI(title) {
+      const card = document.createElement('div');
+      card.className = 'border border-neutral-800 bg-neutral-950 p-4 space-y-3';
+
+      const header = document.createElement('div');
+      header.className = 'flex justify-between items-center text-xs';
+
+      const label = document.createElement('span');
+      label.className = 'text-neutral-300 font-medium';
+      label.textContent = title;
+
+      const btnGroup = document.createElement('div');
+      btnGroup.className = 'flex gap-2';
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'px-2.5 py-1 border border-neutral-800 hover:border-neutral-600 text-neutral-400 hover:text-neutral-200 text-xs transition';
+      copyBtn.textContent = 'คัดลอก';
+
+      const downloadBtn = document.createElement('button');
+      downloadBtn.className = 'px-2.5 py-1 border border-neutral-800 hover:border-neutral-600 text-neutral-400 hover:text-neutral-200 text-xs transition';
+      downloadBtn.textContent = 'ดาวน์โหลด TXT';
+
+      btnGroup.appendChild(copyBtn);
+      btnGroup.appendChild(downloadBtn);
+      header.appendChild(label);
+      header.appendChild(btnGroup);
+
+      const textarea = document.createElement('textarea');
+      textarea.rows = 14;
+      textarea.placeholder = `ข้อความที่ถอดได้จะปรากฏที่นี่...`;
+      textarea.className = 'w-full p-3 bg-black border border-neutral-800 text-neutral-200 text-sm leading-relaxed placeholder-neutral-700 focus:border-neutral-500 focus:outline-none resize-y';
+
+      card.appendChild(header);
+      card.appendChild(textarea);
+      chunksContainer.appendChild(card);
+
+      copyBtn.addEventListener('click', () => {
+        if (!textarea.value) return;
+        navigator.clipboard.writeText(textarea.value).then(() => {
+          copyBtn.textContent = 'คัดลอกแล้ว';
+          setTimeout(() => copyBtn.textContent = 'คัดลอก', 2000);
+        });
+      });
+
+      downloadBtn.addEventListener('click', () => {
+        if (!textarea.value) return;
+        const name = `${currentFile.name.replace(/\.[^/.]+$/, "")}_transcript.txt`;
+        downloadTxtFile(name, textarea.value);
+      });
+
+      return textarea;
+    }
+    function uploadLargeFileWithProgress(apiKey, file, mimeType) {
+      return new Promise((resolve, reject) => {
+        setProgress(5, 'กำลังเริ่มเซสชันอัปโหลดไฟล์...');
+
+        fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`, {
+          method: 'POST',
+          headers: {
+            'X-Goog-Upload-Protocol': 'resumable',
+            'X-Goog-Upload-Command': 'start',
+            'X-Goog-Upload-Header-Content-Length': file.size.toString(),
+            'X-Goog-Upload-Header-Content-Type': mimeType,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ file: { display_name: file.name } })
+        })
+        .then(initRes => {
+          const uploadUrl = initRes.headers.get('x-goog-upload-url');
+          if (!uploadUrl) throw new Error('ไม่สามารถเชื่อมต่อระบบอัปโหลดไฟล์ได้ กรุณาตรวจสอบ API Key');
+
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', uploadUrl, true);
+          xhr.setRequestHeader('Content-Length', file.size.toString());
+          xhr.setRequestHeader('X-Goog-Upload-Offset', '0');
+          xhr.setRequestHeader('X-Goog-Upload-Command', 'upload, finalize');
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const uploadPct = Math.round(5 + (e.loaded / e.total) * 45); // 5% - 50%
+              setProgress(uploadPct, `กำลังส่งไฟล์เข้าคลาวด์ (${Math.round((e.loaded / e.total) * 100)}%)...`);
+            }
+          };
+
+          xhr.onload = async () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const uploadData = JSON.parse(xhr.responseText);
+                let fileUri = uploadData.file?.uri;
+                let state = uploadData.file?.state;
+                let pollCount = 0;
+
+                setProgress(55, 'กำลังตรวจสอบโครงสร้างไฟล์เสียงบนคลาวด์...');
+
+                while (state === 'PROCESSING') {
+                  pollCount++;
+                  const checkPct = Math.min(68, 55 + pollCount * 2);
+                  setProgress(checkPct, 'AI กำลังจัดทำดัชนีคลื่นเสียง...');
+                  await new Promise(r => setTimeout(r, 2000));
+                  const checkRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/${uploadData.file.name}?key=${apiKey}`);
+                  const checkData = await checkRes.json();
+                  state = checkData.state;
+                }
+
+                setProgress(70, 'ไฟล์พร้อมสำหรับการประมวลผล');
+                resolve(fileUri);
+              } catch (err) {
+                reject(err);
+              }
+            } else {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error('การส่งข้อมูลไฟล์ขัดข้อง'));
+          xhr.send(file);
+        })
+        .catch(err => reject(err));
+      });
+    }
+
+    async function streamGenerateWithRetry(apiKey, fileUri, mimeType, onChunk, maxRetries = 3) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse&key=${apiKey}`;
+      let attempt = 0;
+
+      const payload = {
+        contents: [{
+          parts: [
+            { file_data: { mime_type: mimeType, file_uri: fileUri } },
+            { text: "ถอดความเสียงจากไฟล์นี้แบบตรงตามต้นฉบับ 100% คำต่อคำ (Verbatim Transcription) โดยแบ่งหัวข้อย่อยพร้อมใส่ช่วงเวลา [HH:MM:SS - HH:MM:SS] ทุกๆ ประมาณ 10 นาทีอย่างชัดเจน ห้ามสรุปความ ห้ามตัดทอนข้อความใดๆ ทั้งสิ้น คงคำพูดซ้ำ ภาษาพูด และคำอุทานไว้ทั้งหมด จัดย่อหน้าให้อ่านง่าย" }
+          ]
+        }],
+        generationConfig: { temperature: 0.0 }
+      };
+
+      while (attempt < maxRetries) {
+        attempt++;
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (response.status === 503 || response.status === 429) {
+            for (let s = attempt * 3; s > 0; s--) {
+              statusText.textContent = `เซิร์ฟเวอร์มีความต้องการสูง กำลังลองใหม่อัตโนมัติใน ${s} วินาที (ครั้งที่ ${attempt}/${maxRetries})...`;
+              await new Promise(r => setTimeout(r, 1000));
+            }
+            continue;
+          }
+
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error?.message || `HTTP ${response.status}`);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder('utf-8');
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6).trim();
+                if (!jsonStr || jsonStr === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(jsonStr);
+                  const chunkText = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                  if (chunkText) onChunk(chunkText);
+                } catch (e) {}
+              }
+            }
+          }
+
+          return;
+
+        } catch (err) {
+          if (attempt >= maxRetries) throw err;
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+      throw new Error('การเชื่อมต่อกับเซิร์ฟเวอร์ขัดข้อง');
+    }
+
+    startBtn.addEventListener('click', async () => {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey || !currentFile) {
+        alert('กรุณาระบุ API Key และเลือกไฟล์เสียง');
+        return;
+      }
+
+      startBtn.disabled = true;
+      progressSection.classList.remove('hidden');
+      globalActionSection.classList.add('hidden');
+      chunksContainer.innerHTML = '';
+
+      let mimeType = currentFile.type || 'audio/mp4';
+      if (mimeType === 'audio/x-m4a') mimeType = 'audio/mp4';
+
+      try {
+        const fileUri = await uploadLargeFileWithProgress(apiKey, currentFile, mimeType);
+        
+        setProgress(75, 'กำลังเริ่มถอดความเสียงด้วย AI...');
+        const textarea = createChunkUI('ผลการถอดความเนื้อหาทั้งหมด (แบ่งช่วงเวลา 10 นาทีอัตโนมัติ)');
+        
+        let fullTranscript = '';
+        let streamProgress = 75;
+
+        await streamGenerateWithRetry(apiKey, fileUri, mimeType, (token) => {
+          fullTranscript += token;
+          textarea.value = fullTranscript;
+          textarea.scrollTop = textarea.scrollHeight;
+          
+          if (streamProgress < 98) {
+            streamProgress = Math.min(98, streamProgress + 0.5);
+            setProgress(streamProgress, `กำลังถอดความต่อเนื่อง (${textarea.value.length.toLocaleString()} ตัวอักษร)...`);
+          }
+          updateGlobalStats();
+        });
+
+        setProgress(100, 'ถอดความเสร็จสมบูรณ์ 100%');
+        globalActionSection.classList.remove('hidden');
+        updateGlobalStats();
+
+      } catch (err) {
+        alert(`เกิดข้อผิดพลาด: ${err.message}`);
+        statusText.textContent = `การทำงานหยุดชะงัก: ${err.message}`;
+      } finally {
+        startBtn.disabled = false;
+      }
+    });
+
+    function updateGlobalStats() {
+      const textareas = chunksContainer.querySelectorAll('textarea');
+      let totalLen = 0;
+      textareas.forEach(t => totalLen += t.value.length);
+      globalStats.textContent = `(รวม ${totalLen.toLocaleString()} ตัวอักษร)`;
+    }
+
+    copyAllBtn.addEventListener('click', () => {
+      const textarea = chunksContainer.querySelector('textarea');
+      if (!textarea || !textarea.value) return;
+      navigator.clipboard.writeText(textarea.value).then(() => {
+        copyAllBtn.textContent = 'คัดลอกทั้งหมดแล้ว';
+        setTimeout(() => copyAllBtn.textContent = 'คัดลอกทั้งหมด', 2000);
+      });
+    });
+
+    downloadAllBtn.addEventListener('click', () => {
+      const textarea = chunksContainer.querySelector('textarea');
+      if (!textarea || !textarea.value) return;
+      const baseName = currentFile ? currentFile.name.replace(/\.[^/.]+$/, "") : "transcript";
+      downloadTxtFile(`${baseName}_transcript.txt`, textarea.value);
+    });
+  </script>
+</body>
+</html>
